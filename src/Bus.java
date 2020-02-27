@@ -2,8 +2,8 @@ public class Bus extends Vehicle {
     private int fuelLevel;
     private double consumption;
 
-    public Bus(double width, double length, int weight, int maxWeight, GearboxType gearboxType, FuelType fuelType, int fuelLevel, double consumption) {
-        super(width, length, weight, maxWeight, gearboxType, fuelType);
+    public Bus(double width, double length, int weight, int maxWeight, GearboxType gearboxType, Engine.FuelType fuelType, int enginePower, int fuelLevel, double consumption) {
+        super(width, length, weight, maxWeight, gearboxType, fuelType, enginePower);
         this.fuelLevel = fuelLevel;
         this.consumption = consumption;
     }

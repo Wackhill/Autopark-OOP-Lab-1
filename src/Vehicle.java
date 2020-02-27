@@ -4,27 +4,20 @@ public class Vehicle {
         AUTOMATIC
     }
 
-    public enum FuelType {
-        PETROL,
-        DIESEL,
-        GAS,
-        ELECTRIC
-    }
-
     private double width;
     private double length;
     private int weight;
     private int maxWeight;
     private GearboxType gearboxType;
-    private FuelType fuelType;
+    private Engine engine;
 
-    public Vehicle(double width, double length, int weight, int maxWeight, GearboxType gearboxType, FuelType fuelType) {
+    public Vehicle(double width, double length, int weight, int maxWeight, GearboxType gearboxType, Engine.FuelType fuelType, int enginePower) {
         this.width = width;
         this.length = length;
         this.weight = weight;
         this.maxWeight = maxWeight;
         this.gearboxType = gearboxType;
-        this.fuelType = fuelType;
+        this.engine = new Engine(fuelType, enginePower);
     }
 
     public double getWidth() {
@@ -47,7 +40,7 @@ public class Vehicle {
         return gearboxType;
     }
 
-    public FuelType getFuelType() {
-        return fuelType;
+    public Engine getEngine() {
+        return engine;
     }
 }
