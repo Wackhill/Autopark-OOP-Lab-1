@@ -2,10 +2,10 @@ import javax.swing.*;
 import java.awt.*;
 
 class GUIClass extends JFrame {
-    static final Color BASIC_BUTTON_COLOR = Color.decode("#f6f6f6");
-    static final Color SELECTED_BUTTON_COLOR = Color.decode("#00a64b");
-    static final int BUTTON_HEIGHT = 35;
-    static final int BUTTON_WIDTH = 150;
+    static final Color BASIC_LIST_ITEM_COLOR = Color.decode("#f6f6f6");
+    static final Color SELECTED_LIST_ITEM_COLOR = Color.decode("#00a64b");
+    static final int CELL_HEIGHT = 35;
+    static final int CELL_WIDTH = 150;
     static final int MARGIN_LEFT = 10;
     static final int MARGIN_TOP = 10;
     JPanel mainLayout;
@@ -19,4 +19,3 @@ class GUIClass extends JFrame {
         add(mainLayout);
     }
 }
-
