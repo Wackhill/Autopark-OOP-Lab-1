@@ -1,10 +1,20 @@
 import javax.swing.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.lang.reflect.Field;
-import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Vector;
+
+/*TODO
+    1. Достать "главные" объекты ☑
+    2. Обойти "главные" объекты и вытащить:
+        2.1. Поля примитивных типов ☑
+        2.2. String
+        2.3. Поля, представленные кастомными объектами ☑
+        2.4. Enum
+        2.5. Массивы и листы
+ */
 
 public class Autopark {
     //private AutoparkItems autoparkItems = new AutoparkItems();
@@ -12,25 +22,32 @@ public class Autopark {
     private static JButton selectedButton = null;
     private static final Class OBJECTS_SOURCE_CLASS = AutoparkResources.class;
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws ClassNotFoundException, NoSuchFieldException {
         javax.swing.SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
                 guiClass = new GUIClass();
-                guiClass.setVisible(true);
+                //guiClass.setVisible(true);
             }
         });
 
-        ArrayList<Field> mainObjectsList = getMainObjects(new ArrayList<>());//FIXME==================
-        ArrayList[] fieldsList = new ArrayList[mainObjectsList.size()];//FIXME========================
+        //Достать "главные" объекты
+        ArrayList<Field> mainObjectsList = getMainObjects(new ArrayList<>());
+        //Обойти главные объекты
+        ArrayList[] fieldsList = new ArrayList[mainObjectsList.size()];
+
+        //Выв
+
         for (int fieldNumber = 0; fieldNumber < mainObjectsList.size(); fieldNumber++) {
-            System.out.println("===== " + mainObjectsList.get(fieldNumber) + " ======");
-            fieldsList[fieldNumber] = getAllFields(new ArrayList<>(), classByField(mainObjectsList.get(0), OBJECTS_SOURCE_CLASS));
+            System.out.println("");
+            System.out.println("================= " + mainObjectsList.get(fieldNumber) + " =================");
+            fieldsList[fieldNumber] = getAllFields(new ArrayList<>(), classByField(mainObjectsList.get(fieldNumber), OBJECTS_SOURCE_CLASS));//TODO---
             for (int i = 0; i < fieldsList[fieldNumber].size(); i++) {
                 //System.out.println(fieldsList[fieldNumber].get(i).toString());
             }
         }
 
+        /*
         int curPos = GUIClass.MARGIN_TOP;
         for (int i = 0; i < mainObjectsList.size(); i++) {
             JButton selectObjectButton =
@@ -57,12 +74,13 @@ public class Autopark {
 
                 }
             });
-            /*TODO Container parent = selectObjectButton.getParent();
-                parent.remove(selectObjectButton);*/
+            //Container parent = selectObjectButton.getParent();
+            //parent.remove(selectObjectButton);
         }
         guiClass.repaint();
         guiClass.mainLayout.add(generateTable(fieldsList[0]));
         guiClass.repaint();
+        */
     }
 
     private static JScrollPane generateTable(ArrayList<Field> fields) {
@@ -91,6 +109,7 @@ public class Autopark {
         return scrollPane;
     }
 
+    //Метод получения "главных" объектов
     private static ArrayList<Field> getMainObjects(ArrayList<Field> mainFields) {
         for (Field field : OBJECTS_SOURCE_CLASS.getDeclaredFields()) {
             String fieldType = field.getType().toString();
@@ -99,6 +118,54 @@ public class Autopark {
             }
         }
         return mainFields;
+    }
+
+    //Метод получения полей главных объектов
+    private static ArrayList<Field> getAllFields(ArrayList<Field> fields, Class type) throws ClassNotFoundException, NoSuchFieldException {
+        for (Field field : type.getDeclaredFields()) {
+            String fieldType = field.getType().toString();
+
+            if (fieldType.contains("List")) {
+                //FIXME: Листы пока работают некорректно
+                //System.out.println("Here is list!");
+                String listVarName = field.toString().substring(field.toString().lastIndexOf('.') + 1);
+                Field listField = type.getDeclaredField(listVarName);
+                ParameterizedType listType = (ParameterizedType) listField.getGenericType();
+                Class listClass = (Class) listType.getActualTypeArguments()[0];
+                fields.add(field);
+                getAllFields(fields, listClass);
+            } else if (fieldType.contains("class") && !fieldType.contains("lang") && !fieldType.contains("$")) {
+                //System.out.println("Here is class!");
+                getAllFields(fields, Class.forName(fieldType.substring(fieldType.lastIndexOf(" ") + 1)));
+            } else if (fieldType.contains("class") && fieldType.contains("$")) {
+                //System.out.println("Here is enum!");
+                //System.out.println(fieldType);
+                getEnumFields(fieldType.substring(fieldType.lastIndexOf(" ") + 1));
+
+            } else {
+                System.out.print("Kinda primitive type: ");
+                //System.out.println("Dunno what is it :(");
+                //System.out.println("================================");
+                System.out.println(field.toString());
+                //System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+            }
+            fields.add(field);
+        }
+        //Если класс от от чего-то наследуется, то вытягиваем поля суперкласса
+        if (type.getSuperclass() != null) {
+            getAllFields(fields, type.getSuperclass());
+        }
+        return fields;
+    }
+
+    //TODO: Переделать под метод, водвращающий лист
+    private static void getEnumFields(String enumName) throws ClassNotFoundException {
+        Class enumClass = Class.forName(enumName);
+        if (enumClass.isEnum()) {
+            System.out.format("Enum name:  %s%nEnum constants:  %s%n",
+                    enumClass.getName(),
+                    Arrays.asList(enumClass.getEnumConstants()));
+        }
     }
 
     private static Class classByField(Field field, Class fieldClass) {
@@ -113,137 +180,14 @@ public class Autopark {
         ParameterizedType listType = (ParameterizedType) listField.getGenericType();
         return (Class) listType.getActualTypeArguments()[0];
     }
-/*
-    private static ArrayList<Field> getAllFields(ArrayList<Field> fields, Class type) {
-        System.out.println("Input class " + type);
-        for (Field field : type.getDeclaredFields()) {
-            String fieldType = field.getType().toString();
 
+    private static <E extends Enum> E[] getEnumValues(Class<?> enumClass) throws NoSuchFieldException, IllegalAccessException {
+        Field f = enumClass.getDeclaredField("Engine$FuelType");
+        System.out.println(f);
 
-            if (fieldType.contains("List")) {
-                String listVarName = field.toString().substring(field.toString().lastIndexOf('.') + 1);
-
-                Field listField = null;
-                try {
-                    listField = type.getDeclaredField(listVarName);
-                } catch (NoSuchFieldException e) {
-                    e.printStackTrace();
-                }
-
-                ParameterizedType listType = (ParameterizedType) listField.getGenericType();
-                Class listClass = (Class) listType.getActualTypeArguments()[0];
-                System.out.println(listClass);
-
-                getAllFields(fields, listClass);
-                //System.out.println(listClass); //Ternary operator booleanExpression ? expression1 : expression2
-            }
-
-
-            System.out.println(fieldType);
-            fields.add(field);//TODO:====================
-        }
-
-
-
-
-            try {
-                if (isClass(Class.forName(fieldType.substring(fieldType.lastIndexOf(" ") + 1)))) {
-                    System.out.println("OH, SHIT, I'M CLASSSS!!!!!!!");
-                }
-            } catch (ClassNotFoundException e) {
-                e.printStackTrace();
-            }
-            if (fieldType.contains("class") && fieldType.contains("$")) {
-                String enumName = fieldType.substring(fieldType.lastIndexOf("$") + 1);
-
-            }
-            else if (fieldType.contains("class") && !fieldType.contains("lang")) {
-
-
-                System.out.println("===== BAN =====");
-                try {
-                    getAllFields(fields, Class.forName(fieldType.substring(fieldType.lastIndexOf(" ") + 1)));
-                } catch (ClassNotFoundException e) {
-                    e.printStackTrace();
-                }
-
-            //}
-
-//        fields.addAll(Arrays.asList(type.getDeclaredFields()));
-
-        if (type.getSuperclass() != null) {
-            getAllFields(fields, type.getSuperclass());
-        }
-
-        return fields;
+        System.out.println(Modifier.toString(f.getModifiers()));
+        f.setAccessible(true);
+        Object o = f.get(null);
+        return (E[]) o;
     }
-    */
-
-    private static ArrayList<Field> getAllFields(ArrayList<Field> fields, Class type) {
-        for (Field field : type.getDeclaredFields()) {
-            String fieldType = field.getType().toString();
-            if (fieldType.contains("List")) {
-                String listVarName = field.toString().substring(field.toString().lastIndexOf('.') + 1);
-                Field listField = null;
-                try {
-                    listField = type.getDeclaredField(listVarName);
-                } catch (NoSuchFieldException e) {
-                    e.printStackTrace();
-                }
-                ParameterizedType listType = (ParameterizedType) listField.getGenericType();
-                Class listClass = (Class) listType.getActualTypeArguments()[0];
-                getAllFields(fields, listClass);
-            }
-            else if (fieldType.contains("class") && !fieldType.contains("lang") && !fieldType.contains("$")) {
-                try {
-                    getAllFields(fields, Class.forName(fieldType.substring(fieldType.lastIndexOf(" ") + 1)));
-                } catch (ClassNotFoundException e) {
-                    e.printStackTrace();
-                }
-            }
-            else {
-                System.out.println("================================");
-                System.out.println(field.toString());
-                System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
-            }
-            fields.add(field);
-        }
-        if (type.getSuperclass() != null) {
-            getAllFields(fields, type.getSuperclass());
-        }
-        return fields;
-    }
-
-    /*
-    public static ArrayList<Field> getAllFields(ArrayList<Field> fields, Class type) {
-        fields.addAll(Arrays.asList(type.getDeclaredFields()));
-        //fields.addAll(Arrays.asList(type.getSimpleName()));
-        //System.out.println(type.getTypeName());
-        //Field[] declaredFields = type.getDeclaredFields();
-        //for (Field field : declaredFields) {
-        //System.out.println(field + " | " + field.getType());
-        //if ((field.getType() + "").matches("class")) {
-        //getAllFields(fields, field.getName().getClass());
-        //}
-        //}
-
-        if (type.getSuperclass() != null) {
-            getAllFields(fields, type.getSuperclass());
-        }
-
-        return fields;
-    }
-
-     */
-
-    //Bus bus = new Bus(1, 2, 3, 4, Vehicle.GearboxType.AUTOMATIC, Vehicle.FuelType.ELECTRIC, 3, 5);
-    //System.out.println(bus.getWidth());
-
-    /*
-    private Route[] route = {new Route(1, 2, "Немига"),
-                             new Route(2, 3, "Купаловская"),
-                             new Route(4, 5, "Партизанская")};
-
-    ArrayList<String> categoriesList = new ArrayList<>();
-    */
 }
