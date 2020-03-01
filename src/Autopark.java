@@ -27,7 +27,7 @@ public class Autopark {
     private static GUIClass guiClass;
     private static final Class OBJECTS_SOURCE_CLASS = AutoparkResources.class;
     private static JScrollPane currentTable = null;
-    public static void main(String[] args) throws ClassNotFoundException, NoSuchFieldException {
+    public static void main(String[] args) throws ClassNotFoundException, NoSuchFieldException, NoSuchMethodException {
         javax.swing.SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
@@ -57,6 +57,15 @@ public class Autopark {
                     currentTable = generateTable(fieldsList[mainObjectChooser.getSelectedIndex()]);
                     guiClass.mainLayout.add(currentTable);
                     guiClass.repaint();
+
+                    Constructor[] constructors = new Constructor[0];
+                    try {
+                        //System.out.println("Look: " + fieldsList[mainObjectChooser.getSelectedIndex()]);
+                        constructors = Class.forName(mainObjectsList.get(mainObjectChooser.getSelectedIndex()).getName()).getConstructors();
+                    } catch (ClassNotFoundException e) {
+                        e.printStackTrace();
+                    }
+                    System.out.println(constructors[0]);
                 }
             }
         });
