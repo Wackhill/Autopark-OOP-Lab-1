@@ -31,68 +31,41 @@ public class Autopark {
         ArrayList<Field> mainObjectsList = getMainObjects(new ArrayList<>()); //Список главных объектов
         ArrayList<Field>[] fieldsList = getFieldsList(mainObjectsList);       //Список полей главных объектов, их родителей и полей, ...
                                                                               // ... также представленных объектами
-        AutoparkResources autoparkResources = new AutoparkResources();
 
         //FIXME=========================================================================================================
-//        Driver driver = new Driver("DriverName", 10);
-        //Field field = driver.getClass().getDeclaredField("name");
-        //field.setAccessible(true);
-        //Driver value = (Driver) field.get(driver);
-        //System.out.println(driver.getName());
 
-        //WORKS>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-//                            Field[] fields = Driver.class.getDeclaredFields();
-//                            for (int i = 0; i < fields.length; i++) {
-//                                fields[i].setAccessible(true);
-//                            }
-//
-//                            for (int i = 0; i < fields.length; i++) {
-//                                Object value = fields[i].get(driver);
-//
-//                                // print result
-//                                System.out.println("Value of Field "
-//                                        + fields[i].getName()
-//                                        + " is " + value);
-//                            }
-        //<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+        Class toAddClass = classByField(mainObjectsList.get(3), OBJECTS_SOURCE_CLASS);          //Выбираем класс, в который надо добалять объект
+        Constructor[] constructors = toAddClass.getDeclaredConstructors();                      //Получаем его конструктор
 
-        Class aClass = classByField(mainObjectsList.get(3), OBJECTS_SOURCE_CLASS);
-        Constructor[] constructors = aClass.getDeclaredConstructors();
-        Object[] objects = new Object[2];
-        objects[0] = "Ivan";
-        objects[1] = 12;
-        Object c = createObject(constructors[0], objects);
-        Object[] resourceLists = new Object[mainObjectsList.size()];
+        Object[] objectConstructor = new Object[2];                                             //Теперь делаем сам объект
+        objectConstructor[0] = "Ivan";
+        objectConstructor[1] = 12;
+        Object objectToAdd = createObject(constructors[0], objectConstructor);                  //Создали объект
+
+        /////////////////////////
+        objectConstructor = new Object[2];
+        objectConstructor[0] = "Not Ivan";
+        objectConstructor[1] = 1200;
+        Object objectToAdd1 = createObject(constructors[0], objectConstructor);
+        /////////////
+
+        Object[] resourceLists = new Object[mainObjectsList.size()];                            //Тут будут листы, в которые надо что-то добавлять
         for (int i = 0; i < resourceLists.length; i++) {
             resourceLists[i] = AutoparkResources.class.getDeclaredFields()[i].getType().getDeclaredConstructor().newInstance();
         }
+
         Method add = ArrayList.class.getDeclaredMethod("add", Object.class);
-        add.invoke(resourceLists[3], c);
-        Field[] fields = aClass.getDeclaredFields();
+        add.invoke(resourceLists[3], objectToAdd);
+        add.invoke(resourceLists[3], objectToAdd1);
+
+        Method get = ArrayList.class.getDeclaredMethod("get", int.class);
+
+        Field[] fields = ((Object) get.invoke(resourceLists[3], 1)).getClass().getDeclaredFields();
         for (int i = 0; i < fields.length; i++) {
             fields[i].setAccessible(true);
-        }
-        for (int i = 0; i < fields.length; i++) {
-            Object value = fields[i].get(c);
+            Object value = fields[i].get((get.invoke(resourceLists[3], 1)));
             System.out.println("Value of Field " + fields[i].getName() + " is " + value);
         }
-
-
-        //System.out.println(get.invoke(resourceLists[3], 0).getClass());
-        //System.out.println(get.invoke(resourceLists[3], 0));
-        //Field[] field1 = get.invoke(resourceLists[3], 0).getClass().getFields();
-
-
-        /*
-        for (int i = 0; i < field1.length; i++) {
-            field1[0].setAccessible(true);
-            System.out.println("Ban " + field1[0].get(Driver.class));
-
-            //System.out.println(field1[i].get(field1[i].getName()));
-        }
-         */
-        //System.out.println(((Driver) get.invoke(resourceLists[3], 0)).getName());
-
 
         //FIXME=========================================================================================================
 
