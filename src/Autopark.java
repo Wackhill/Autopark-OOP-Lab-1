@@ -1,84 +1,243 @@
+import javax.management.ObjectName;
 import javax.swing.*;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.awt.image.AreaAveragingScaleFilter;
 import java.lang.reflect.*;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Vector;
 
 /*TODO
-    1. Достать "главные" объекты ☑
-    2. Обойти "главные" объекты и вытащить:
+    1. Достать главные объекты ☑
+    2. Обойти главные объекты и вытащить:
         2.1. Поля примитивных типов ☑
         2.2. String ☑
         2.3. Поля, представленные кастомными объектами ☑
         2.4. Enum ☑
         2.5. Массивы и листы
     3. Подготовить форму:
-        3.1. Генерировать лист главных объектов с обработчиком выбора
-
+        3.1. Генерировать лист главных объектов с обработчиком выбора ☑
+        3.2. Генерировать таблицы параметров объектов
  */
 
 public class Autopark {
-    //private AutoparkItems autoparkItems = new AutoparkItems();
     private static GUIClass guiClass;
     private static final Class OBJECTS_SOURCE_CLASS = AutoparkResources.class;
     private static JScrollPane currentTable = null;
-    public static void main(String[] args) throws ClassNotFoundException, NoSuchFieldException, NoSuchMethodException {
-        javax.swing.SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                guiClass = new GUIClass();
-                guiClass.setVisible(true);
-            }
+    public static void main(String[] args) throws ClassNotFoundException, NoSuchFieldException, IllegalAccessException, InstantiationException, NoSuchMethodException, InvocationTargetException {
+        javax.swing.SwingUtilities.invokeLater(() -> {
+            guiClass = new GUIClass();
+            //guiClass.setVisible(true);
         });
+        ArrayList<Field> mainObjectsList = getMainObjects(new ArrayList<>()); //Список главных объектов
+        ArrayList<Field>[] fieldsList = getFieldsList(mainObjectsList);       //Список полей главных объектов, их родителей и полей, ...
+                                                                              // ... также представленных объектами
+        AutoparkResources autoparkResources = new AutoparkResources();
 
-        //Достать главные объекты
-        ArrayList<Field> mainObjectsList = getMainObjects(new ArrayList<>());
-        //Обойти главные объекты
-        ArrayList[] fieldsList = new ArrayList[mainObjectsList.size()];
+        //FIXME=========================================================================================================
+//        Driver driver = new Driver("DriverName", 10);
+        //Field field = driver.getClass().getDeclaredField("name");
+        //field.setAccessible(true);
+        //Driver value = (Driver) field.get(driver);
+        //System.out.println(driver.getName());
 
-        JList mainObjectChooser = makeMainObjectsList(mainObjectsList);
+        //WORKS>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+//                            Field[] fields = Driver.class.getDeclaredFields();
+//                            for (int i = 0; i < fields.length; i++) {
+//                                fields[i].setAccessible(true);
+//                            }
+//
+//                            for (int i = 0; i < fields.length; i++) {
+//                                Object value = fields[i].get(driver);
+//
+//                                // print result
+//                                System.out.println("Value of Field "
+//                                        + fields[i].getName()
+//                                        + " is " + value);
+//                            }
+        //<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+        Class aClass = classByField(mainObjectsList.get(3), OBJECTS_SOURCE_CLASS);
+        Constructor[] constructors = aClass.getDeclaredConstructors();
+        Object[] objects = new Object[2];
+        objects[0] = "Ivan";
+        objects[1] = 12;
+        Object c = createObject(constructors[0], objects);
+        Object[] resourceLists = new Object[mainObjectsList.size()];
+        for (int i = 0; i < resourceLists.length; i++) {
+            resourceLists[i] = AutoparkResources.class.getDeclaredFields()[i].getType().getDeclaredConstructor().newInstance();
+        }
+        Method add = ArrayList.class.getDeclaredMethod("add", Object.class);
+        add.invoke(resourceLists[3], c);
+        Field[] fields = aClass.getDeclaredFields();
+        for (int i = 0; i < fields.length; i++) {
+            fields[i].setAccessible(true);
+        }
+        for (int i = 0; i < fields.length; i++) {
+            Object value = fields[i].get(c);
+            System.out.println("Value of Field " + fields[i].getName() + " is " + value);
+        }
+
+
+        //System.out.println(get.invoke(resourceLists[3], 0).getClass());
+        //System.out.println(get.invoke(resourceLists[3], 0));
+        //Field[] field1 = get.invoke(resourceLists[3], 0).getClass().getFields();
+
+
+        /*
+        for (int i = 0; i < field1.length; i++) {
+            field1[0].setAccessible(true);
+            System.out.println("Ban " + field1[0].get(Driver.class));
+
+            //System.out.println(field1[i].get(field1[i].getName()));
+        }
+         */
+        //System.out.println(((Driver) get.invoke(resourceLists[3], 0)).getName());
+
+
+        //FIXME=========================================================================================================
+
+        JList mainObjectChooser = makeMainObjectsList(mainObjectsList);       //Кликабельный лист, в котором выбирается объект для редактирования
         guiClass.mainLayout.add(mainObjectChooser);
-        mainObjectChooser.setSelectedIndex(0);
+        assert mainObjectsList.size() > 0;
+        mainObjectChooser.setSelectedIndex(0);                                //При запуске выбирается самый первый
+        currentTable = generateTable(fieldsList[0]);
+        guiClass.mainLayout.add(currentTable);
+        guiClass.repaint();
 
-
-        mainObjectChooser.addListSelectionListener(new ListSelectionListener() {
-            @Override
-            public void valueChanged(ListSelectionEvent listSelectionEvent) {
-                if (mainObjectChooser.getValueIsAdjusting()) {
-                    System.out.println(mainObjectChooser.getSelectedIndex() + " ");
-                    if (currentTable != null) {
-                        currentTable.setVisible(false);
-                    }
-                    currentTable = generateTable(fieldsList[mainObjectChooser.getSelectedIndex()]);
-                    guiClass.mainLayout.add(currentTable);
-                    guiClass.repaint();
-
-                    Constructor[] constructors = new Constructor[0];
-                    try {
-                        //System.out.println("Look: " + fieldsList[mainObjectChooser.getSelectedIndex()]);
-                        constructors = Class.forName(mainObjectsList.get(mainObjectChooser.getSelectedIndex()).getName()).getConstructors();
-                    } catch (ClassNotFoundException e) {
-                        e.printStackTrace();
-                    }
-                    System.out.println(constructors[0]);
+        mainObjectChooser.addListSelectionListener(listSelectionEvent -> {    //Обработка выбора объекта
+            if (mainObjectChooser.getValueIsAdjusting()) {
+                if (currentTable != null) {
+                    currentTable.setVisible(false);
                 }
+                currentTable = generateTable(fieldsList[mainObjectChooser.getSelectedIndex()]); //Генерация таблицы параметров объекта
+                guiClass.mainLayout.add(currentTable);
+                guiClass.repaint();
             }
         });
+    }
 
+    public static Object createObject(Constructor constructor, Object[] arguments) {
+        //System.out.println("Constructor: " + constructor.toString());
+        Object object = null;
+        try {
+            object = constructor.newInstance(arguments);
+            //System.out.println("Object: " + object.toString());
+            return object;
+        } catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+            System.out.println(e);
+        }
+        return object;
+    }
+
+    //Метод для получения значений параметров главных объектов
+    private static ArrayList<Field>[] getFieldsList(ArrayList<Field> mainObjectsList) throws NoSuchFieldException, ClassNotFoundException {
+        //Обойти главные объекты
+        ArrayList[] primaryFieldsList = new ArrayList[mainObjectsList.size()];
         for (int fieldNumber = 0; fieldNumber < mainObjectsList.size(); fieldNumber++) {
-            System.out.println("");
-            System.out.println("================= " + mainObjectsList.get(fieldNumber) + " =================");
-            fieldsList[fieldNumber] = getAllFields(new ArrayList<>(), classByField(mainObjectsList.get(fieldNumber), OBJECTS_SOURCE_CLASS));//TODO---
-            for (int i = 0; i < fieldsList[fieldNumber].size(); i++) {
-                System.out.println(fieldsList[fieldNumber].get(i).toString());
+            primaryFieldsList[fieldNumber] = getAllFields(new ArrayList<>(), classByField(mainObjectsList.get(fieldNumber), OBJECTS_SOURCE_CLASS));//TODO---
+        }
+
+        //Создать лист реальных полей, согласно полям конструктора
+        ArrayList[] fieldsList = new ArrayList[mainObjectsList.size()];
+        for (int i = 0; i < fieldsList.length; i++) {
+            fieldsList[i] = new ArrayList<Field>();
+        }
+
+        for (int i = 0; i < mainObjectsList.size(); i++) {
+            String constructorMap = getConstructorMap(mainObjectsList.get(i), OBJECTS_SOURCE_CLASS);
+            String objectMap = getObjectMap(primaryFieldsList[i]);
+            String mainPart = getSameParts(constructorMap, objectMap);
+            int matchStart = objectMap.indexOf(mainPart);
+
+            int j = mainPart.length();
+            while (j > 0) {
+                fieldsList[i].add(primaryFieldsList[i].get(matchStart));
+                primaryFieldsList[i].remove(matchStart);
+                j--;
+            }
+
+            constructorMap = constructorMap.replace(mainPart, "");
+            objectMap = objectMap.replace(mainPart, "");
+
+            int loopCounter = constructorMap.length();
+            while (loopCounter > 0) {
+                char typeToFit = constructorMap.charAt(0);
+                int fieldIndex = findInFields(typeToFit, objectMap);
+                if (fieldIndex != -1) {
+                    fieldsList[i].add(primaryFieldsList[i].get(fieldIndex));
+                    primaryFieldsList[i].remove(fieldIndex);
+                    constructorMap = constructorMap.replaceFirst(String.valueOf(typeToFit), "");
+                    objectMap = objectMap.replaceFirst(String.valueOf(typeToFit), "");
+                }
+                //else {
+                //FIXME, PLEASE
+                //}
+                loopCounter--;
             }
         }
-        guiClass.repaint();
+        return fieldsList;
+    }
+
+    private static int findInFields(char toFind, String objectMap) {
+        int index = objectMap.indexOf(toFind);
+        if (objectMap.indexOf(toFind, index) != -1) {
+            //return -1;//FIXME, PLEASE!
+        }
+        return index;
+    }
+
+    private static String getSameParts(String str1, String str2) {
+        int substringLength = 1;
+        String maxMatch = "";
+        int maxMatchLength = 0;
+        while (substringLength <= str1.length()) {
+            int startIndex = 0;
+            while (startIndex + substringLength <= str1.length()) {
+                String analyzingSubstring = str1.substring(startIndex, startIndex + substringLength);
+                if (str2.contains(analyzingSubstring)) {
+                    maxMatch = analyzingSubstring;
+                    maxMatchLength = substringLength;
+                }
+                startIndex++;
+            }
+            substringLength++;
+        }
+        if (maxMatchLength == 0) {
+            return "";
+        }
+        return maxMatch;
+    }
+
+    private static String getObjectMap(ArrayList<Field> fields) {
+        if (fields.size() > 0) {
+            StringBuilder map = new StringBuilder();
+            for (int i = 0; i < fields.size(); i++) {
+                String fieldType = fields.get(i).getType().toString();
+                map.append(fields.get(i).getType().toString().charAt(fieldType.indexOf(" ") + 1));
+            }
+            return map.toString();
+        }
+        else {
+            return "";
+        }
+    }
+
+    private static String getConstructorMap(Field mainObject, Class sourceClass) {
+        Class aClass = classByField(mainObject, sourceClass);
+        Constructor[] constructors = aClass.getDeclaredConstructors();
+        if (constructors.length > 0) {
+            String constructor = constructors[0].toString();
+            //System.out.println(constructor);
+            String[] constructorFields = constructor.substring(constructor.indexOf("(") + 1, constructor.indexOf(")")).split(",");
+            StringBuilder map = new StringBuilder();
+            for (String cFieldType: constructorFields) {
+                map.append(cFieldType.charAt(0));
+            }
+            return map.toString();
+        }
+        else {
+            return "";
+        }
     }
 
     private static JList makeMainObjectsList(ArrayList<Field> mainObjectsList) {
@@ -101,14 +260,13 @@ public class Autopark {
         return objectsArray;
     }
 
-    private static JScrollPane generateTable(ArrayList<Field> fields) {
-        Object[][] dataA = new String[fields.size()][fields.size()];
-        //Object[] tableHeaders = new String[fields.size()];
+    private static JScrollPane generateTable(ArrayList<Field> fieldsNames) {
+        Object[][] dataA = new String[fieldsNames.size()][5];
 
         Vector<Vector<String>> data = new Vector<Vector<String>>();
         Vector<String> header = new Vector<>();
-        for (int j = 0; j < fields.size(); j++) {
-            header.add(fields.get(j).getName());
+        for (int j = 0; j < fieldsNames.size(); j++) {
+            header.add(fieldsNames.get(j).getName());
             Vector<String> row = new Vector<>();
             for (int i = 0; i < dataA[j].length; i++) {
                 row.add((String) dataA[j][i]);
@@ -117,23 +275,24 @@ public class Autopark {
         }
 
         JTable table = new JTable(data, header);
-        table.setSize(800, 300);
+        table.setSize(GUIClass.TABLE_WIDTH, GUIClass.TABLE_HEIGHT);
         table.setRowHeight(GUIClass.CELL_HEIGHT);
 
         JScrollPane scrollPane = new JScrollPane();
         scrollPane.setLocation(GUIClass.MARGIN_LEFT + GUIClass.CELL_WIDTH + 10, GUIClass.MARGIN_TOP);
-        scrollPane.setSize(800, 300);
+        scrollPane.setSize(GUIClass.TABLE_WIDTH, GUIClass.TABLE_HEIGHT);
         scrollPane.setViewportView(table);
         return scrollPane;
     }
 
-    //Метод получения "главных" объектов
+    //Метод получения главных объектов
     private static ArrayList<Field> getMainObjects(ArrayList<Field> mainFields) {
         for (Field field : OBJECTS_SOURCE_CLASS.getDeclaredFields()) {
             String fieldType = field.getType().toString();
             if (fieldType.contains("List")) {
                 mainFields.add(field);
             }
+            field.setAccessible(true);
         }
         return mainFields;
     }
@@ -151,12 +310,19 @@ public class Autopark {
                 Class listClass = (Class) listType.getActualTypeArguments()[0];
                 fields.add(field);
                 getAllFields(fields, listClass);
+                field.setAccessible(true);
+                fields.add(field);
             } else if (fieldType.contains("class") && !fieldType.contains("lang") && !fieldType.contains("$")) {
                 getAllFields(fields, Class.forName(fieldType.substring(fieldType.lastIndexOf(" ") + 1)));
             } else if (fieldType.contains("class") && fieldType.contains("$")) {
                 getEnumFields(fieldType.substring(fieldType.lastIndexOf(" ") + 1));
+                field.setAccessible(true);
+                fields.add(field);
             }
-            fields.add(field);
+            else {
+                field.setAccessible(true);
+                fields.add(field);
+            }
         }
         //Если класс от от чего-то наследуется, то вытягиваем поля суперкласса
         if (type.getSuperclass() != null) {

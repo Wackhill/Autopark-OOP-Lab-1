@@ -1,9 +1,9 @@
 import java.util.ArrayList;
 
 public class AutoparkResources {
-    private ArrayList<Bus> buses = new ArrayList<>();
-    private ArrayList<TrolleyBus> trolleyBuses = new ArrayList<>();
-    private ArrayList<ElectricBus> electricBuses = new ArrayList<>();
-    private ArrayList<Driver> drivers = new ArrayList<>();
-    private ArrayList<Route> routes = new ArrayList<>();
+    public ArrayList<Bus> buses = new ArrayList<>();
+    public ArrayList<TrolleyBus> trolleyBuses = new ArrayList<>();
+    public ArrayList<ElectricBus> electricBuses = new ArrayList<>();
+    public ArrayList<Driver> drivers = new ArrayList<>();
+    //private ArrayList<Route> routes = new ArrayList<>();
 }
