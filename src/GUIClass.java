@@ -1,13 +1,18 @@
 import javax.swing.*;
 import java.awt.*;
+import java.lang.reflect.Constructor;
 
 class GUIClass extends JFrame {
     static final Color BASIC_LIST_ITEM_COLOR = Color.decode("#f6f6f6");
     static final Color SELECTED_LIST_ITEM_COLOR = Color.decode("#00a64b");
-    static final int FORM_HEIGHT = 715;
-    static final int FORM_WIDTH = 1300;
+    static final Color REMOVE_BUTTON_COLOR = Color.decode("#ab4f50");
+    static final Color EDIT_BUTTON_COLOR = Color.decode("#019ade");
+    static final Color APPLY_BUTTON_COLOR = Color.decode("#fdb813");
+    static final Color ADD_BUTTON_COLOR = Color.decode("#00b5c3");
+    static final int FORM_HEIGHT = 700;
+    static final int FORM_WIDTH = 1110;
     static final int TABLE_HEIGHT = 300;
-    static final int TABLE_WIDTH = 1000;
+    static final int TABLE_WIDTH = 900;
     static final int CELL_HEIGHT = 35;
     static final int CELL_WIDTH = 160;
     static final int MARGIN_LEFT = 10;

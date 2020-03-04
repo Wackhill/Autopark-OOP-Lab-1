@@ -1,4 +1,5 @@
 import javax.swing.*;
+import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
 import java.beans.PropertyEditor;
 import java.beans.PropertyEditorManager;
@@ -7,17 +8,20 @@ import java.util.ArrayList;
 import java.util.Vector;
 
 public class Autopark {
-    private static GUIClass guiClass;
     private static final Class OBJECTS_SOURCE_CLASS = AutoparkResources.class;
-    private static JScrollPane currentTable = null;
     private static Object[] resourcesLists;
     private static ArrayList<Field> mainObjectsList;
     private static ArrayList<Field>[] fieldsList;
+
+    //GUI
+    private static GUIClass guiClass;
     private static JButton addButton = null;
-    private static int activeFieldsNumber;
+    private static JScrollPane currentTable = null;
+    private static JTable justTable;
     private static ArrayList<Field> activeList = null;
     private static JLabel[] editableFieldsNames = null;
     private static JTextField[] editableObjectFields = null;
+    private static boolean isEditing = false;
 
     public static void main(String[] args) throws ClassNotFoundException, NoSuchFieldException, IllegalAccessException, InstantiationException, NoSuchMethodException, InvocationTargetException {
         javax.swing.SwingUtilities.invokeLater(() -> {
@@ -25,32 +29,117 @@ public class Autopark {
             guiClass.setVisible(true);
         });
 
-        mainObjectsList = getMainObjects(new ArrayList<>());                  //Список главных объектов
-        fieldsList = getFieldsList(mainObjectsList);                          //Список полей главных объектов, их родителей и полей, ...
-                                                                              // ... также представленных объектами
+        mainObjectsList = getMainObjects(new ArrayList<>());
+        fieldsList = getFieldsList(mainObjectsList);
+
         resourcesLists = new Object[mainObjectsList.size()];
         for (int i = 0; i < resourcesLists.length; i++) {
             resourcesLists[i] = AutoparkResources.class.getDeclaredFields()[i].getType().getDeclaredConstructor().newInstance();
         }
 
-        //FIXME=========================================================================================================
-        Method add1 = ArrayList.class.getDeclaredMethod("add", Object.class);
-
-        Class toAddClass1 = classByField(mainObjectsList.get(2), OBJECTS_SOURCE_CLASS);
-        Constructor[] constructors1 = toAddClass1.getDeclaredConstructors();
-
-        Object[] objectConstructor1 = { 0.5234, 0.1234, 134, 23234, "Mercedess", 1500, 0.2345, 1239468 };
-        Object objectToAdd4 = createObject(constructors1[0], objectConstructor1);
-        add1.invoke(resourcesLists[2], objectToAdd4);
-        //FIXME=========================================================================================================
-
-        JList mainObjectChooser = makeMainObjectsList(mainObjectsList);       //Кликабельный лист, в котором выбирается объект для редактирования
+        JList mainObjectChooser = makeMainObjectsList(mainObjectsList);
         guiClass.mainLayout.add(mainObjectChooser);
         mainObjectChooser.setSelectedIndex(0);                                //При запуске выбирается самый первый
 
         currentTable = generateTable(fieldsList[0], 0);
         guiClass.mainLayout.add(currentTable);
+        generateEditFields(0);
         guiClass.repaint();
+
+        JButton removeButton = new JButton("Remove");
+        removeButton.setLocation(GUIClass.MARGIN_LEFT, GUIClass.TABLE_HEIGHT - 2 * GUIClass.CELL_HEIGHT);
+        removeButton.setSize(GUIClass.CELL_WIDTH, GUIClass.CELL_HEIGHT);
+        removeButton.setBackground(GUIClass.REMOVE_BUTTON_COLOR);
+        guiClass.mainLayout.add(removeButton);
+
+        removeButton.addActionListener(actionEvent -> {
+            if (justTable.getSelectedRow() != -1) {
+                try {
+                    Method remove = ArrayList.class.getDeclaredMethod("remove", int.class);
+                    remove.invoke(resourcesLists[mainObjectChooser.getSelectedIndex()], justTable.getSelectedRow());
+                    if (currentTable != null) {
+                        currentTable.setVisible(false);
+                    }
+                    currentTable = generateTable(fieldsList[mainObjectChooser.getSelectedIndex()], mainObjectChooser.getSelectedIndex());
+                    guiClass.mainLayout.add(currentTable);
+                    guiClass.repaint();
+                } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException | NoSuchFieldException e) {
+                    e.printStackTrace();
+                }
+            }
+            else {
+                JOptionPane.showMessageDialog(guiClass, "Nothing selected");
+            }
+        });
+
+        JButton editButton = new JButton("Edit");
+        editButton.setLocation(GUIClass.MARGIN_LEFT, GUIClass.TABLE_HEIGHT - GUIClass.CELL_HEIGHT + GUIClass.MARGIN_TOP);
+        editButton.setSize(GUIClass.CELL_WIDTH, GUIClass.CELL_HEIGHT);
+        editButton.setBackground(GUIClass.EDIT_BUTTON_COLOR);
+        guiClass.mainLayout.add(editButton);
+
+        editButton.addActionListener(actionEvent -> {
+            if (!isEditing) {
+                if (justTable.getSelectedRow() != -1) {
+                    for (int fieldNumber = 0; fieldNumber < editableObjectFields.length; fieldNumber++) {
+                        editableObjectFields[fieldNumber].setText((String) justTable.getValueAt(justTable.getSelectedRow(), fieldNumber));
+                    }
+                    isEditing = true;
+                    editButton.setText("Apply changes");
+                    editButton.setBackground(GUIClass.APPLY_BUTTON_COLOR);
+
+                    addButton.setEnabled(false);
+                }
+                else {
+                    JOptionPane.showMessageDialog(guiClass, "Nothing selected");
+                }
+            }
+            else {
+                Class toAdd = classByField(mainObjectsList.get(mainObjectChooser.getSelectedIndex()), OBJECTS_SOURCE_CLASS);
+                Constructor[] possibleConstructors = toAdd.getDeclaredConstructors();
+
+                Object[] constructorArray = new Object[activeList.size()];
+                boolean allOk = true;
+                for (int i = 0; i < activeList.size(); i++) {
+                    try {
+                        if (fieldsList[mainObjectChooser.getSelectedIndex()].get(i).getType().toString().contains("int")) {
+                            constructorArray[i] = Integer.parseInt(editableObjectFields[i].getText());
+                        } else if (fieldsList[mainObjectChooser.getSelectedIndex()].get(i).getType().toString().contains("double")) {
+                            constructorArray[i] = Double.parseDouble(editableObjectFields[i].getText());
+                        } else {
+                            constructorArray[i] = editableObjectFields[i].getText();
+                        }
+                    } catch (NumberFormatException e) {
+                        JOptionPane.showMessageDialog(guiClass, "All fields must be filled according to their logical type!");
+                        allOk = false;
+                    }
+                }
+
+                if (allOk) {
+                    Object objectToAdd = createObject(possibleConstructors[0], constructorArray);
+                    try {
+                        Method set = ArrayList.class.getDeclaredMethod("set", int.class, Object.class);
+                        set.invoke(resourcesLists[mainObjectChooser.getSelectedIndex()], justTable.getSelectedRow(), objectToAdd);
+
+                        if (currentTable != null) {
+                            currentTable.setVisible(false);
+                        }
+                        currentTable = generateTable(fieldsList[mainObjectChooser.getSelectedIndex()], mainObjectChooser.getSelectedIndex());
+                        guiClass.mainLayout.add(currentTable);
+                        guiClass.repaint();
+                    } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException | NoSuchFieldException e) {
+                        e.printStackTrace();
+                    }
+                    isEditing = false;
+                    editButton.setText("Edit");
+                    editButton.setBackground(GUIClass.EDIT_BUTTON_COLOR);
+                    for (int fieldNumber = 0; fieldNumber < editableObjectFields.length; fieldNumber++) {
+                        editableObjectFields[fieldNumber].setText("");
+                    }
+                    addButton.setEnabled(true);
+                }
+            }
+        });
 
         mainObjectChooser.addListSelectionListener(listSelectionEvent -> {    //Обработка выбора объекта
             if (mainObjectChooser.getValueIsAdjusting()) {
@@ -63,37 +152,7 @@ public class Autopark {
                     e.printStackTrace();
                 }
 
-                //FIXME=================================================================================================
-                if (editableFieldsNames != null) {
-                    for (int i = 0; i < editableFieldsNames.length; i++) {
-                        editableFieldsNames[i].setVisible(false);
-                        editableObjectFields[i].setVisible(false);
-                        addButton.setVisible(false);
-                    }
-                }
-                activeList = fieldsList[mainObjectChooser.getSelectedIndex()];
-                activeFieldsNumber = activeList.size();
-                editableObjectFields = new JTextField[activeList.size()];
-                editableFieldsNames = new JLabel[activeList.size()];
-                int verticalShift = GUIClass.TABLE_HEIGHT + 2 * GUIClass.MARGIN_TOP;
-                for (int i = 0; i < activeList.size(); i++) {
-                    editableFieldsNames[i] = new JLabel(activeList.get(i).getName());
-                    editableFieldsNames[i].setSize(GUIClass.LABEL_WIDTH, GUIClass.LABEL_HEIGHT);
-                    editableFieldsNames[i].setLocation(2 * GUIClass.MARGIN_LEFT + GUIClass.CELL_WIDTH, verticalShift);
-                    guiClass.mainLayout.add(editableFieldsNames[i]);
-
-                    editableObjectFields[i] = new JTextField();
-                    editableObjectFields[i].setSize(GUIClass.EDIT_FIELD_WIDTH, GUIClass.EDIT_FIELD_HEIGHT);
-                    editableObjectFields[i].setLocation(2 * GUIClass.MARGIN_LEFT + GUIClass.CELL_WIDTH + GUIClass.LABEL_WIDTH, verticalShift);
-                    guiClass.mainLayout.add(editableObjectFields[i]);
-
-                    verticalShift += GUIClass.MARGIN_TOP + GUIClass.EDIT_FIELD_HEIGHT;
-                }
-
-                addButton = new JButton("Add");
-                addButton.setSize(GUIClass.LABEL_WIDTH + GUIClass.EDIT_FIELD_WIDTH, GUIClass.EDIT_FIELD_HEIGHT);
-                addButton.setLocation(2 * GUIClass.MARGIN_LEFT + GUIClass.CELL_WIDTH, verticalShift);
-                guiClass.mainLayout.add(addButton);
+                generateEditFields(mainObjectChooser.getSelectedIndex());
 
                 addButton.addActionListener(actionEvent -> {
                     Class toAdd = classByField(mainObjectsList.get(mainObjectChooser.getSelectedIndex()), OBJECTS_SOURCE_CLASS);
@@ -134,12 +193,52 @@ public class Autopark {
                         }
                     }
                 });
-                //FIXME=================================================================================================
 
                 guiClass.mainLayout.add(currentTable);
                 guiClass.repaint();
             }
+
+            isEditing = false;
+            editButton.setText("Edit");
+            editButton.setBackground(GUIClass.EDIT_BUTTON_COLOR);
+            for (int fieldNumber = 0; fieldNumber < editableObjectFields.length; fieldNumber++) {
+                editableObjectFields[fieldNumber].setText("");
+            }
         });
+        guiClass.repaint();
+    }
+
+    private static void generateEditFields(int selectedObjectId) {
+        if (editableFieldsNames != null) {
+            for (int i = 0; i < editableFieldsNames.length; i++) {
+                editableFieldsNames[i].setVisible(false);
+                editableObjectFields[i].setVisible(false);
+                addButton.setVisible(false);
+            }
+        }
+        activeList = fieldsList[selectedObjectId];
+        editableObjectFields = new JTextField[activeList.size()];
+        editableFieldsNames = new JLabel[activeList.size()];
+        int verticalShift = GUIClass.TABLE_HEIGHT + 2 * GUIClass.MARGIN_TOP;
+        for (int i = 0; i < activeList.size(); i++) {
+            editableFieldsNames[i] = new JLabel("   " + capFirst(activeList.get(i).getName()));
+            editableFieldsNames[i].setSize(GUIClass.LABEL_WIDTH, GUIClass.LABEL_HEIGHT);
+            editableFieldsNames[i].setLocation(GUIClass.MARGIN_LEFT, verticalShift);
+            guiClass.mainLayout.add(editableFieldsNames[i]);
+
+            editableObjectFields[i] = new JTextField();
+            editableObjectFields[i].setSize(GUIClass.EDIT_FIELD_WIDTH, GUIClass.EDIT_FIELD_HEIGHT);
+            editableObjectFields[i].setLocation(2 * GUIClass.MARGIN_LEFT + GUIClass.CELL_WIDTH, verticalShift);
+            guiClass.mainLayout.add(editableObjectFields[i]);
+
+            verticalShift += GUIClass.MARGIN_TOP + GUIClass.EDIT_FIELD_HEIGHT;
+        }
+
+        addButton = new JButton("Add");
+        addButton.setSize(GUIClass.EDIT_FIELD_WIDTH, GUIClass.CELL_HEIGHT);
+        addButton.setLocation(2 * GUIClass.MARGIN_LEFT + GUIClass.CELL_WIDTH, verticalShift);
+        addButton.setBackground(GUIClass.ADD_BUTTON_COLOR);
+        guiClass.mainLayout.add(addButton);
     }
 
     private static Object convert(Class<?> targetType, String text) {
@@ -165,7 +264,7 @@ public class Autopark {
         //Обойти главные объекты
         ArrayList[] primaryFieldsList = new ArrayList[mainObjectsList.size()];
         for (int fieldNumber = 0; fieldNumber < mainObjectsList.size(); fieldNumber++) {
-            primaryFieldsList[fieldNumber] = getAllFields(new ArrayList<>(), classByField(mainObjectsList.get(fieldNumber), OBJECTS_SOURCE_CLASS));//TODO---
+            primaryFieldsList[fieldNumber] = getAllFields(new ArrayList<>(), classByField(mainObjectsList.get(fieldNumber), OBJECTS_SOURCE_CLASS));
         }
 
         //Создать лист реальных полей, согласно полям конструктора
@@ -200,9 +299,6 @@ public class Autopark {
                     constructorMap = constructorMap.replaceFirst(String.valueOf(typeToFit), "");
                     objectMap = objectMap.replaceFirst(String.valueOf(typeToFit), "");
                 }
-                //else {
-                //FIXME, PLEASE
-                //}
                 loopCounter--;
             }
         }
@@ -212,7 +308,7 @@ public class Autopark {
     private static int findInFields(char toFind, String objectMap) {
         int index = objectMap.indexOf(toFind);
         if (objectMap.indexOf(toFind, index) != -1) {
-            //return -1;//FIXME, PLEASE!
+            return -1;
         }
         return index;
     }
@@ -278,6 +374,10 @@ public class Autopark {
         list.setBackground(GUIClass.BASIC_LIST_ITEM_COLOR);
         list.setSelectionBackground(GUIClass.SELECTED_LIST_ITEM_COLOR);
         list.setSize(GUIClass.CELL_WIDTH, GUIClass.CELL_HEIGHT * mainObjectsList.size());
+
+        DefaultListCellRenderer renderer = (DefaultListCellRenderer) list.getCellRenderer();
+        renderer.setHorizontalAlignment(SwingConstants.CENTER);
+
         list.setFont(new Font("Arial", Font.BOLD, 14));
         return list;
     }
@@ -317,7 +417,7 @@ public class Autopark {
 
         Vector<String> header = new Vector<>();
         for (Field fieldsName : fieldsNames) {
-            header.add(fieldsName.getName());
+            header.add(capFirst(fieldsName.getName()));
         }
 
         Vector<Vector<String>> data = new Vector<Vector<String>>();
@@ -332,6 +432,14 @@ public class Autopark {
         JTable table = new JTable(data, header);
         table.setSize(GUIClass.TABLE_WIDTH, GUIClass.TABLE_HEIGHT);
         table.setRowHeight(GUIClass.CELL_HEIGHT);
+
+        DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+        centerRenderer.setHorizontalAlignment( JLabel.CENTER );
+        for (int columnNumber = 0; columnNumber < table.getColumnCount(); columnNumber++) {
+            table.getColumnModel().getColumn(columnNumber).setCellRenderer(centerRenderer);
+        }
+        justTable = table;
+
         JScrollPane scrollPane = new JScrollPane();
         scrollPane.setLocation(GUIClass.MARGIN_LEFT + GUIClass.CELL_WIDTH + 10, GUIClass.MARGIN_TOP);
         scrollPane.setSize(GUIClass.TABLE_WIDTH, GUIClass.TABLE_HEIGHT);
@@ -356,7 +464,6 @@ public class Autopark {
             String fieldType = field.getType().toString();
 
             if (fieldType.contains("List")) {
-                //FIXME: Листы пока работают некорректно
                 String listVarName = field.toString().substring(field.toString().lastIndexOf('.') + 1);
                 Field listField = type.getDeclaredField(listVarName);
                 ParameterizedType listType = (ParameterizedType) listField.getGenericType();
@@ -392,5 +499,13 @@ public class Autopark {
         assert listField != null;
         ParameterizedType listType = (ParameterizedType) listField.getGenericType();
         return (Class) listType.getActualTypeArguments()[0];
+    }
+
+    private static String capFirst(String string) {
+        if (string.length() > 0) {
+            String firstLetter = String.valueOf(string.charAt(0));
+            string = firstLetter.toUpperCase() + ((string.length() > 1) ? string.substring(1) : "");
+        }
+        return string;
     }
 }
