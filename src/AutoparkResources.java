@@ -5,5 +5,4 @@ public class AutoparkResources {
     public ArrayList<TrolleyBus> trolleyBuses = new ArrayList<>();
     public ArrayList<ElectricBus> electricBuses = new ArrayList<>();
     public ArrayList<Driver> drivers = new ArrayList<>();
-    //private ArrayList<Route> routes = new ArrayList<>();
 }

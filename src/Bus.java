@@ -2,8 +2,8 @@ public class Bus extends Vehicle {
     private int fuelLevel;
     private double consumption;
 
-    public Bus(double width, double length, int weight, int maxWeight, GearboxType gearboxType, Engine.FuelType fuelType, int enginePower, int fuelLevel, double consumption) {
-        super(width, length, weight, maxWeight, gearboxType, fuelType, enginePower);
+    public Bus(double width, double length, int weight, int maxWeight, String model, int enginePower, int fuelLevel, double consumption) {
+        super(width, length, weight, maxWeight, model, enginePower);
         this.fuelLevel = fuelLevel;
         this.consumption = consumption;
     }
@@ -13,11 +13,4 @@ public class Bus extends Vehicle {
     // Нельзя переопределить метод, объявленный в том же классе
     //
 
-    public int getFuelLevel() {
-        return fuelLevel;
-    }
-
-    public double getConsumption() {
-        return consumption;
-    }
 }
