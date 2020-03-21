@@ -5,15 +5,15 @@ public class Vehicle {
     private int weight;
     private int maxWeight;
     private String model;
-    private int enginePower;
+    private Engine engine;
 
-    public Vehicle(double width, double length, int weight, int maxWeight, String model, int enginePower) {
+    Vehicle(double width, double length, int weight, int maxWeight, String model, int enginePower, int engineVolume) {
         this.width = width;
         this.length = length;
         this.weight = weight;
         this.maxWeight = maxWeight;
         this.model = model;
-        this.enginePower = enginePower;
+        this.engine = new Engine(enginePower, engineVolume);
     }
 
     public double getWidth() {

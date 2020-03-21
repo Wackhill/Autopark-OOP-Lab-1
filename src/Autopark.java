@@ -9,7 +9,7 @@ import java.util.Vector;
 
 public class Autopark {
     private static final Class OBJECTS_SOURCE_CLASS = AutoparkResources.class;
-    private static Object[] resourcesLists;
+    private static Object[] resourcesLists;     //Тут лежат непосредственно листы, в которое можно что-то добавить
     private static ArrayList<Field> mainObjectsList;
     private static ArrayList<Field>[] fieldsList;
 
@@ -26,17 +26,101 @@ public class Autopark {
     public static void main(String[] args) throws ClassNotFoundException, NoSuchFieldException, IllegalAccessException, InstantiationException, NoSuchMethodException, InvocationTargetException {
         javax.swing.SwingUtilities.invokeLater(() -> {
             guiClass = new GUIClass();
-            guiClass.setVisible(true);
+            //guiClass.setVisible(true);
         });
 
+        System.out.println("=========================== Main Objects ===============================\n");
         mainObjectsList = getMainObjects(new ArrayList<>());
+        for (int i = 0; i < mainObjectsList.size(); i++) {
+            System.out.println(mainObjectsList.get(i));
+        }
+
+        System.out.println("\n============================ Main Fields ===============================\n");
         fieldsList = getFieldsList(mainObjectsList);
 
+        for (int i = 0; i < fieldsList.length; i++) {
+            for (int j = 0; j < fieldsList[i].size(); j++) {
+                System.out.println(fieldsList[i].get(j));
+            }
+            System.out.print("\n");
+        }
+
+        System.out.println("======================================================================");
         resourcesLists = new Object[mainObjectsList.size()];
         for (int i = 0; i < resourcesLists.length; i++) {
             resourcesLists[i] = AutoparkResources.class.getDeclaredFields()[i].getType().getDeclaredConstructor().newInstance();
         }
 
+        //ElectricBus: double, |double, |int,    |int,       |String, |int,         |int,         |double,              |int
+        //             width,  |length, |weight, |maxWeight, |model,  |enginePower, |engineSpeed, |electricConsumption, |batteryLevel
+        Class toAdd = classByField(mainObjectsList.get(2), OBJECTS_SOURCE_CLASS);
+        Constructor[] possibleConstructors = toAdd.getDeclaredConstructors();
+
+        Object[] constructorArray = {1.2, 3.4, 5, 6, "Seven", 8, 9, 10.11, 12};
+
+        Object objectToAdd = createObject(possibleConstructors[0], constructorArray);
+        ArrayList<Field> list = getAllFields(new ArrayList<>(), objectToAdd.getClass());
+        for (Field field : list) {
+            field.setAccessible(true);
+            if (!field.getType().toString().contains("class") || (field.getType().toString().contains("class") && field.getType().toString().contains("java"))) {
+                System.out.println("All OK: " + field.get(objectToAdd) + "   <<<" + field.getName());
+            }
+            else {
+                Object someObject = field.get(objectToAdd);
+                ArrayList<Field> arrayList = getAllFields(new ArrayList<>(), someObject.getClass());
+                for (Field field1 : arrayList) {
+                    field1.setAccessible(true);
+                    System.out.println("All OK: " + field1.get(someObject) + "   <<<" + field1.getName());
+                }
+            }
+        }
+//        Method add = ArrayList.class.getDeclaredMethod("add", Object.class);
+//        add.invoke(resourcesLists[2], objectToAdd);
+//
+//        //Gettttttttting!!!
+//
+////FIXME:=========
+//
+//        Method get = ArrayList.class.getDeclaredMethod("get", int.class);
+//        Method size = ArrayList.class.getDeclaredMethod("size");
+//
+//        int objectId = 2;
+//        String fieldName = String.valueOf(mainObjectsList.get(objectId));
+//
+//        Field[] fields = new Field[fieldsList[objectId].size()];
+//        for (int i = 0; i < fields.length; i++) {
+//            fields[i] = fieldsList[objectId].get(i);
+//        }
+//
+//        int resourcesListSize = (int) size.invoke(resourcesLists[objectId]);
+//        Object[][] dataA = new String[resourcesListSize][fieldsList[2].size()];
+//
+//        for (int i = 0; i < resourcesListSize; i++) {
+//            for (int j = 0; j < fields.length; j++) {
+//                fields[j].setAccessible(true);
+//                //System.out.println((j + 1) + "   " + getClassNameByField(fields[j] + ""));
+//                //System.out.println((j + 1) + "   " + fields[j].getDeclaringClass());
+//
+//                if (!(getClassNameByField(String.valueOf(fields[j])).contains("Engine"))) {
+//                    Object value = fields[j].get((get.invoke(resourcesLists[objectId], i)));
+//                    dataA[i][j] = String.valueOf(value);
+//                    System.out.println(dataA[i][j] + "   ");
+//                }
+//                else {
+//                    System.out.println(";;;;;;;;;;;;");
+//                    for (int y = 0; y < resourcesLists.length; y++) {
+//                        System.out.println(resourcesLists[y]);
+//                    }
+//                }
+//            }
+//            System.out.println("");
+//        }
+
+
+
+//FIXME=========
+
+    /*
         JList mainObjectChooser = makeMainObjectsList(mainObjectsList);
         guiClass.mainLayout.add(mainObjectChooser);
         mainObjectChooser.setSelectedIndex(0);                                //При запуске выбирается самый первый
@@ -205,7 +289,13 @@ public class Autopark {
                 editableObjectFields[fieldNumber].setText("");
             }
         });
+
         guiClass.repaint();
+     */
+    }
+
+    private static String getClassNameByField(String stringField) {
+        return stringField.substring(stringField.lastIndexOf(" ") + 1, stringField.lastIndexOf("."));
     }
 
     private static void generateEditFields(int selectedObjectId) {
@@ -308,7 +398,7 @@ public class Autopark {
     private static int findInFields(char toFind, String objectMap) {
         int index = objectMap.indexOf(toFind);
         if (objectMap.indexOf(toFind, index) != -1) {
-            return -1;
+            //return -1;
         }
         return index;
     }
@@ -474,7 +564,8 @@ public class Autopark {
                 fields.add(field);
             }
             else if (fieldType.contains("class") && !fieldType.contains("lang") && !fieldType.contains("$")) {
-                getAllFields(fields, Class.forName(fieldType.substring(fieldType.lastIndexOf(" ") + 1)));
+                //getAllFields(fields, Class.forName(fieldType.substring(fieldType.lastIndexOf(" ") + 1)));
+                fields.add(field);
             }
             else {
                 field.setAccessible(true);
