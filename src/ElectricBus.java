@@ -5,4 +5,16 @@ public class ElectricBus extends TrolleyBus {
         super(width, length, weight, maxWeight, model, enginePower, engineSpeed, electricConsumption);
         this.batteryLevel = batteryLevel;
     }
+
+    public ElectricBus() {
+
+    }
+
+    public int getBatteryLevel() {
+        return batteryLevel;
+    }
+
+    public void setBatteryLevel(int batteryLevel) {
+        this.batteryLevel = batteryLevel;
+    }
 }

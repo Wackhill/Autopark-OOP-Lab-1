@@ -1,11 +1,18 @@
+import Serializators.BinarySerialization;
+import Serializators.JsonSerialization;
+
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.beans.PropertyEditor;
 import java.beans.PropertyEditorManager;
+import java.io.*;
 import java.lang.reflect.*;
 import java.util.ArrayList;
 import java.util.Vector;
+import java.util.zip.GZIPInputStream;
 
 public class Autopark {
     private static final Class OBJECTS_SOURCE_CLASS = AutoparkResources.class;
@@ -13,6 +20,7 @@ public class Autopark {
     private static ArrayList<Field> mainObjectsList;
     private static ArrayList<Field>[] fieldsList;
     private static ArrayList<Field>[] objContainingFields;
+    private static String objectsDirPath = null;
 
     //GUI
     private static GUIClass guiClass;
@@ -23,6 +31,9 @@ public class Autopark {
     private static JLabel[] editableFieldsNames = null;
     private static JTextField[] editableObjectFields = null;
     private static boolean isEditing = false;
+
+    JFileChooser directoryChooser;
+    String chosenDirectory = "";
 
     public static void main(String[] args) throws ClassNotFoundException, NoSuchFieldException, IllegalAccessException, InstantiationException, NoSuchMethodException, InvocationTargetException {
         javax.swing.SwingUtilities.invokeLater(() -> {
@@ -45,6 +56,56 @@ public class Autopark {
         guiClass.mainLayout.add(currentTable);
         generateEditFields(0);
         guiClass.repaint();
+
+        //////////
+        JButton loadButton = new JButton("Load");
+        loadButton.setLocation(GUIClass.MARGIN_LEFT, GUIClass.TABLE_HEIGHT - 3 * GUIClass.CELL_HEIGHT - GUIClass.MARGIN_TOP);
+        loadButton.setSize(GUIClass.CELL_WIDTH / 2 - 5, GUIClass.CELL_HEIGHT);
+        guiClass.mainLayout.add(loadButton);
+
+        loadButton.addActionListener(actionEvent -> {
+            JFileChooser fileChooser = new JFileChooser("D:\\ObjectStore");
+            fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+            int retCode = fileChooser.showDialog(null, "Выбрать файл");
+            if (retCode == JFileChooser.APPROVE_OPTION) {
+                File chosenFile = fileChooser.getSelectedFile();
+                objectsDirPath = chosenFile.getPath();
+                //System.out.println(objectsDirPath);
+            }
+
+            //BinarySerialization binarySerialization = new BinarySerialization();
+            JsonSerialization jsonSerialization = new JsonSerialization();
+            for (int i = 0; i < resourcesLists.length; i++) {
+                try {
+                    //resourcesLists[i] = binarySerialization.deserialize("D:\\ObjectStore\\" + mainObjectsList.get(i).getName() + ".txt");
+                    resourcesLists[i] = jsonSerialization.deserialize("D:\\ObjectStore\\" + mainObjectsList.get(i).getName() + ".txt");
+                    //Bus bus = (Bus) jsonSerialization.deserialize(resourcesLists[i], "D:\\ObjectStore\\" + mainObjectsList.get(i).getName() + ".txt");
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
+        JButton saveButton = new JButton("Save");
+        saveButton.setLocation(GUIClass.MARGIN_LEFT + GUIClass.CELL_WIDTH / 2, GUIClass.TABLE_HEIGHT - 3 * GUIClass.CELL_HEIGHT - GUIClass.MARGIN_TOP);
+        saveButton.setSize(GUIClass.CELL_WIDTH / 2, GUIClass.CELL_HEIGHT);
+        guiClass.mainLayout.add(saveButton);
+
+        saveButton.addActionListener(actionEvent -> {
+            //BinarySerialization binarySerialization = new BinarySerialization();
+            JsonSerialization jsonSerialization = new JsonSerialization();
+            for (int i = 0; i < resourcesLists.length; i++) {
+                try {
+                    //binarySerialization.serialize(resourcesLists[i], "D:\\ObjectStore\\" + mainObjectsList.get(i).getName() + ".txt");
+                    jsonSerialization.serialize(resourcesLists[i], "D:\\ObjectStore\\" + mainObjectsList.get(i).getName() + ".txt");
+                    //Bus bus = new Bus(1, 2, 3, 4, "Model", 6, 7, 8, 9);
+                    //jsonSerialization.serialize(bus, "D:\\ObjectStore\\" + "Hey" + ".txt");
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+        //////////
 
         JButton removeButton = new JButton("Remove");
         removeButton.setLocation(GUIClass.MARGIN_LEFT, GUIClass.TABLE_HEIGHT - 2 * GUIClass.CELL_HEIGHT);

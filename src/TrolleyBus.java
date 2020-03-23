@@ -5,4 +5,16 @@ public class TrolleyBus extends Vehicle {
         super(width, length, weight, maxWeight, model, enginePower, engineSpeed);
         this.electricConsumption = electricConsumption;
     }
+
+    public TrolleyBus() {
+
+    }
+
+    public double getElectricConsumption() {
+        return electricConsumption;
+    }
+
+    public void setElectricConsumption(double electricConsumption) {
+        this.electricConsumption = electricConsumption;
+    }
 }
