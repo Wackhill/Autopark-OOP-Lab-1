@@ -1,4 +1,6 @@
-public class Driver {
+import java.io.Serializable;
+
+public class Driver implements Serializable {
     private String name;
     private int experience;
 
