@@ -1,14 +1,19 @@
+import Serializators.BinarySerializer;
 import Serializators.JsonSerializer;
 import Serializators.TextSerializer;
+import javafx.stage.FileChooser;
+import javafx.stage.Stage;
 import org.w3c.dom.Text;
 
 import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
 import java.beans.PropertyEditor;
 import java.beans.PropertyEditorManager;
 import java.io.*;
 import java.lang.reflect.*;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Vector;
 
@@ -73,13 +78,56 @@ public class Autopark {
         loadButton.addActionListener(actionEvent -> {
             JFileChooser fileChooser = new JFileChooser("D:\\ObjectStore");
             fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+            fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("Binary file","bin"));
+            fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("JSON file","json"));
+            fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("Text file","txt"));
             int retCode = fileChooser.showDialog(null, "Выбрать файл");
             if (retCode == JFileChooser.APPROVE_OPTION) {
                 File chosenFile = fileChooser.getSelectedFile();
                 objectsDirPath = chosenFile.getPath();
+                if (objectsDirPath != null) {
+                    String extensionConstruction = String.valueOf(fileChooser.getFileFilter());
+                    String extension = extensionConstruction.substring(extensionConstruction.indexOf("=[") + 2, extensionConstruction.length() - 2);
+
+                    switch (extension) {
+                        case ("json"):
+                            for (int i = 0; i < resourcesLists.length; i++) {
+                                try {
+                                    JsonSerializer jsonSerializer = new JsonSerializer(resourcesLists[i]);
+                                    resourcesLists[i] = jsonSerializer.deserialize(objectsDirPath + "\\" + mainObjectsList.get(i).getName() + ".json");
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                            break;
+                        case ("bin"):
+                            for (int i = 0; i < resourcesLists.length; i++) {
+                                try {
+                                    BinarySerializer binarySerializer = new BinarySerializer(resourcesLists[i]);
+                                    resourcesLists[i] = binarySerializer.deserialize(objectsDirPath + "\\" + mainObjectsList.get(i).getName() + ".bin");
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                            break;
+                        case ("txt"):
+                        default:
+                            for (int i = 0; i < resourcesLists.length; i++) {
+                                try {
+                                    TextSerializer textSerializer = new TextSerializer(resourcesLists[i], mainObjectsList.get(i));
+                                    resourcesLists[i] = textSerializer.deserialize(objectsDirPath + "\\" + mainObjectsList.get(i).getName() + ".txt");
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                            break;
+                    }
+                }
+
+
                 //System.out.println(objectsDirPath);
             }
-
+/*
             for (int i = 0; i < resourcesLists.length; i++) {
                 try {
                     //resourcesLists[i] = binarySerialization.deserialize("D:\\ObjectStore\\" + mainObjectsList.get(i).getName() + ".txt");
@@ -92,12 +140,14 @@ public class Autopark {
                     //JsonSerializer jsonSerializer = new JsonSerializer(resourcesLists[i]);
                     //resourcesLists[i] = jsonSerializer.deserialize("D:\\ObjectStore\\" + mainObjectsList.get(i).getName() + "JSON.txt");
 
-                    TextSerializer textSerializer = new TextSerializer(resourcesLists[i], mainObjectsList.get(i));
-                    resourcesLists[i] = textSerializer.deserialize("D:\\ObjectStore\\" + mainObjectsList.get(i).getName() + "TEXT.txt");
+                    //TextSerializer textSerializer = new TextSerializer(resourcesLists[i], mainObjectsList.get(i));
+                    //resourcesLists[i] = textSerializer.deserialize("D:\\ObjectStore\\" + mainObjectsList.get(i).getName() + "TEXT.txt");
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
+
+ */
         });
 
         JButton saveButton = new JButton("Save");
@@ -106,27 +156,60 @@ public class Autopark {
         guiClass.mainLayout.add(saveButton);
 
         saveButton.addActionListener(actionEvent -> {
+            JFileChooser fileChooser = new JFileChooser("D:\\ObjectStore");
+            fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+            fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("Binary file","bin"));
+            fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("JSON file","json"));
+            fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("Text file","txt"));
+
+            int retCode = fileChooser.showDialog(null, "Выбрать файл");
+            if (retCode == JFileChooser.APPROVE_OPTION) {
+                File chosenFile = fileChooser.getSelectedFile();
+                objectsDirPath = chosenFile.getPath();
+                if (objectsDirPath != null) {
+                    String extensionConstruction = String.valueOf(fileChooser.getFileFilter());
+                    String extension = extensionConstruction.substring(extensionConstruction.indexOf("=[") + 2, extensionConstruction.length() - 2);
+
+                    switch (extension) {
+                        case ("json"):
+                            for (int i = 0; i < resourcesLists.length; i++) {
+                                try {
+                                    JsonSerializer jsonSerializer = new JsonSerializer(resourcesLists[i]);
+                                    jsonSerializer.serialize(objectsDirPath + "\\" + mainObjectsList.get(i).getName() + ".json");
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                            break;
+                        case ("bin"):
+                            for (int i = 0; i < resourcesLists.length; i++) {
+                                try {
+                                    BinarySerializer binarySerializer = new BinarySerializer(resourcesLists[i]);
+                                    binarySerializer.serialize(objectsDirPath + "\\" + mainObjectsList.get(i).getName() + ".bin");
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                            break;
+                        case ("txt"):
+                        default:
+                            for (int i = 0; i < resourcesLists.length; i++) {
+                                try {
+                                    TextSerializer textSerializer = new TextSerializer(resourcesLists[i], mainObjectsList.get(i));
+                                    textSerializer.serialize(objectsDirPath + "\\" + mainObjectsList.get(i).getName() + ".txt");
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                            break;
+                    }
+                }
+            }
+
             //BinarySerialization binarySerialization = new BinarySerialization();
             //JsonSerialization jsonSerialization = new JsonSerialization();
             //TextSerializer textSerializer = new TextSerializer();
-            for (int i = 0; i < resourcesLists.length; i++) {
-                try {
-                    //binarySerialization.serialize(resourcesLists[i], "D:\\ObjectStore\\" + mainObjectsList.get(i).getName() + ".txt");
-                    //jsonSerialization.serialize(resourcesLists[i], "D:\\ObjectStore\\" + mainObjectsList.get(i).getName() + ".txt");
-                    //textSerializer.serialize(resourcesLists[i], "D:\\ObjectStore\\" + mainObjectsList.get(i).getName() + "Ban" + ".txt");
 
-                    //BinarySerializer binarySerializer = new BinarySerializer((ArrayList<Field>) resourcesLists[i]);//FIXME=================
-                    //binarySerializer.serialize("D:\\ObjectStore\\" + mainObjectsList.get(i).getName() + "BIN.txt");
-
-                    //JsonSerializer jsonSerializer = new JsonSerializer(resourcesLists[i]);
-                    //jsonSerializer.serialize("D:\\ObjectStore\\" + mainObjectsList.get(i).getName() + "JSON.txt");
-
-                    TextSerializer textSerializer = new TextSerializer(resourcesLists[i], mainObjectsList.get(i));
-                    textSerializer.serialize("D:\\ObjectStore\\" + mainObjectsList.get(i).getName() + "TEXT.txt");
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
         });
         //////////
 
