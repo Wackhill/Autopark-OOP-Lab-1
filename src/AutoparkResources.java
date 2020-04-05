@@ -1,3 +1,8 @@
+import BasicObjects.Bus;
+import BasicObjects.Driver;
+import BasicObjects.ElectricBus;
+import BasicObjects.TrolleyBus;
+
 import java.util.ArrayList;
 
 public class AutoparkResources {

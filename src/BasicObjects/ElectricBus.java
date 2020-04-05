@@ -1,3 +1,5 @@
+package BasicObjects;
+
 public class ElectricBus extends TrolleyBus {
     private int batteryLevel;
 

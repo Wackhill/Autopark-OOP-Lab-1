@@ -1,3 +1,7 @@
+package BasicObjects;
+
+import BasicObjects.Vehicle;
+
 public class TrolleyBus extends Vehicle {
     private double electricConsumption;
 

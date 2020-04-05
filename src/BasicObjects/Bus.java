@@ -1,8 +1,10 @@
+package BasicObjects;
+
 import Serializators.Serializer;
 
 import java.io.Serializable;
 
-public class Bus extends Vehicle  implements Serializable {
+public class Bus extends Vehicle implements Serializable {
     private int fuelLevel;
     private double consumption;
 

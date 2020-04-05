@@ -1,3 +1,7 @@
+import Dialogs.EncoderChooser;
+import SafeSerializers.SafeBinarySerializer;
+import SafeSerializers.SafeJsonSerializer;
+import SafeSerializers.SafeTextSerializer;
 import Serializators.BinarySerializer;
 import Serializators.JsonSerializer;
 import Serializators.TextSerializer;
@@ -8,14 +12,18 @@ import org.w3c.dom.Text;
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.text.View;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.WindowEvent;
 import java.beans.PropertyEditor;
 import java.beans.PropertyEditorManager;
 import java.io.*;
 import java.lang.reflect.*;
+import java.net.URL;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Vector;
+import java.util.*;
 
 public class Autopark {
     private static final Class OBJECTS_SOURCE_CLASS = AutoparkResources.class;
@@ -76,78 +84,95 @@ public class Autopark {
         guiClass.mainLayout.add(loadButton);
 
         loadButton.addActionListener(actionEvent -> {
-            JFileChooser fileChooser = new JFileChooser("D:\\ObjectStore");
-            fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-            fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("Binary file","bin"));
-            fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("JSON file","json"));
-            fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("Text file","txt"));
-            int retCode = fileChooser.showDialog(null, "Выбрать файл");
-            if (retCode == JFileChooser.APPROVE_OPTION) {
-                File chosenFile = fileChooser.getSelectedFile();
-                objectsDirPath = chosenFile.getPath();
-                if (objectsDirPath != null) {
-                    String extensionConstruction = String.valueOf(fileChooser.getFileFilter());
-                    String extension = extensionConstruction.substring(extensionConstruction.indexOf("=[") + 2, extensionConstruction.length() - 2);
+            Class<?>[] availablePlugins = null;
+            try {
+                availablePlugins = getClassesArray();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            ArrayList<String> pluginsList = new ArrayList<>();
 
-                    switch (extension) {
-                        case ("json"):
-                            for (int i = 0; i < resourcesLists.length; i++) {
-                                try {
-                                    JsonSerializer jsonSerializer = new JsonSerializer(resourcesLists[i]);
-                                    resourcesLists[i] = jsonSerializer.deserialize(objectsDirPath + "\\" + mainObjectsList.get(i).getName() + ".json");
-                                } catch (Exception e) {
-                                    e.printStackTrace();
+            for (int i = 0; i < availablePlugins.length; i++) {
+                pluginsList.add(availablePlugins[i].toString().substring(availablePlugins[i].toString().indexOf('.') + 1));
+            }
+
+            EncoderChooser encoderChooser = new EncoderChooser(pluginsList);
+            encoderChooser.setVisible(true);
+
+            int selectedPluginNumber = encoderChooser.comboBox.getSelectedIndex();
+
+            if (selectedPluginNumber != -1) {
+                JFileChooser fileChooser = new JFileChooser("D:\\ObjectStore");
+                fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+                fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("Binary file", "bin"));
+                fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("JSON file", "json"));
+                fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("Text file", "txt"));
+                int retCode = fileChooser.showDialog(null, "Выбрать файл");
+                if (retCode == JFileChooser.APPROVE_OPTION) {
+                    File chosenFile = fileChooser.getSelectedFile();
+                    objectsDirPath = chosenFile.getPath();
+                    if (objectsDirPath != null) {
+                        String extensionConstruction = String.valueOf(fileChooser.getFileFilter());
+                        String extension = extensionConstruction.substring(extensionConstruction.indexOf("=[") + 2, extensionConstruction.length() - 2);
+
+                        switch (extension) {
+                            case ("json"):
+                                for (int i = 0; i < resourcesLists.length; i++) {
+                                    try {
+                                        //JsonSerializer jsonSerializer = new JsonSerializer(resourcesLists[i]);
+                                        //resourcesLists[i] = jsonSerializer.deserialize(objectsDirPath + "\\" + mainObjectsList.get(i).getName() + ".json");
+                                        SafeJsonSerializer jsonSerializer = new SafeJsonSerializer(resourcesLists[i], availablePlugins[selectedPluginNumber]);
+                                        resourcesLists[i] = jsonSerializer.deserialize(objectsDirPath + "\\" + mainObjectsList.get(i).getName() + ".json");
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                    }
                                 }
-                            }
-                            break;
-                        case ("bin"):
-                            for (int i = 0; i < resourcesLists.length; i++) {
-                                try {
-                                    BinarySerializer binarySerializer = new BinarySerializer(resourcesLists[i]);
-                                    resourcesLists[i] = binarySerializer.deserialize(objectsDirPath + "\\" + mainObjectsList.get(i).getName() + ".bin");
-                                } catch (Exception e) {
-                                    e.printStackTrace();
+                                break;
+                            case ("bin"):
+                                for (int i = 0; i < resourcesLists.length; i++) {
+                                    try {
+                                        //BinarySerializer binarySerializer = new BinarySerializer(resourcesLists[i]);
+                                        //resourcesLists[i] = binarySerializer.deserialize(objectsDirPath + "\\" + mainObjectsList.get(i).getName() + ".bin");
+                                        SafeBinarySerializer binarySerializer = new SafeBinarySerializer(resourcesLists[i], availablePlugins[selectedPluginNumber]);
+                                        resourcesLists[i] = binarySerializer.deserialize(objectsDirPath + "\\" + mainObjectsList.get(i).getName() + ".bin");
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                    }
                                 }
-                            }
-                            break;
-                        case ("txt"):
-                        default:
-                            for (int i = 0; i < resourcesLists.length; i++) {
-                                try {
-                                    TextSerializer textSerializer = new TextSerializer(resourcesLists[i], mainObjectsList.get(i));
-                                    resourcesLists[i] = textSerializer.deserialize(objectsDirPath + "\\" + mainObjectsList.get(i).getName() + ".txt");
-                                } catch (Exception e) {
-                                    e.printStackTrace();
+                                break;
+                            case ("txt"):
+                            default:
+                                for (int i = 0; i < resourcesLists.length; i++) {
+                                    try {
+                                        //TextSerializer textSerializer = new TextSerializer(resourcesLists[i], mainObjectsList.get(i));
+                                        //resourcesLists[i] = textSerializer.deserialize(objectsDirPath + "\\" + mainObjectsList.get(i).getName() + ".txt");
+                                        SafeTextSerializer textSerializer = new SafeTextSerializer(resourcesLists[i], mainObjectsList.get(i), availablePlugins[selectedPluginNumber]);
+                                        resourcesLists[i] = textSerializer.deserialize(objectsDirPath + "\\" + mainObjectsList.get(i).getName() + ".txt");
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                    }
                                 }
-                            }
-                            break;
+                                break;
+                        }
+
+                        if (currentTable != null) {
+                            currentTable.setVisible(false);
+                        }
+                        try {
+                            currentTable = generateTable(fieldsList[0], 0);
+                        } catch (NoSuchMethodException | InvocationTargetException | NoSuchFieldException | IllegalAccessException | ClassNotFoundException e) {
+                            e.printStackTrace();
+                        }
+                        guiClass.mainLayout.add(currentTable);
+                        guiClass.repaint();
+
                     }
-                }
 
 
-                //System.out.println(objectsDirPath);
-            }
-/*
-            for (int i = 0; i < resourcesLists.length; i++) {
-                try {
-                    //resourcesLists[i] = binarySerialization.deserialize("D:\\ObjectStore\\" + mainObjectsList.get(i).getName() + ".txt");
-                    //resourcesLists[i] = jsonSerialization.deserialize("D:\\ObjectStore\\" + mainObjectsList.get(i).getName() + ".txt");
-                    //resourcesLists[i] = textSerializer.deserialize("D:\\ObjectStore\\" + mainObjectsList.get(i).getName() + ".txt");
-
-                    //BinarySerializer binarySerializer = new BinarySerializer(resourcesLists[i]);//FIXME===============
-                    //resourcesLists[i] = binarySerializer.deserialize("D:\\ObjectStore\\" + mainObjectsList.get(i).getName() + "BIN.txt");
-
-                    //JsonSerializer jsonSerializer = new JsonSerializer(resourcesLists[i]);
-                    //resourcesLists[i] = jsonSerializer.deserialize("D:\\ObjectStore\\" + mainObjectsList.get(i).getName() + "JSON.txt");
-
-                    //TextSerializer textSerializer = new TextSerializer(resourcesLists[i], mainObjectsList.get(i));
-                    //resourcesLists[i] = textSerializer.deserialize("D:\\ObjectStore\\" + mainObjectsList.get(i).getName() + "TEXT.txt");
-                } catch (Exception e) {
-                    e.printStackTrace();
+                    //System.out.println(objectsDirPath);
                 }
             }
 
- */
         });
 
         JButton saveButton = new JButton("Save");
@@ -156,6 +181,85 @@ public class Autopark {
         guiClass.mainLayout.add(saveButton);
 
         saveButton.addActionListener(actionEvent -> {
+            Class<?>[] availablePlugins = null;
+            try {
+                availablePlugins = getClassesArray();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            ArrayList<String> pluginsList = new ArrayList<>();
+
+            for (int i = 0; i < availablePlugins.length; i++) {
+                pluginsList.add(availablePlugins[i].toString().substring(availablePlugins[i].toString().indexOf('.') + 1));
+            }
+
+            EncoderChooser encoderChooser = new EncoderChooser(pluginsList);
+            encoderChooser.setVisible(true);
+
+            int selectedPluginNumber = encoderChooser.comboBox.getSelectedIndex();
+
+            if (selectedPluginNumber != -1) {
+                JFileChooser fileChooser = new JFileChooser("D:\\ObjectStore");
+                fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+                fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("Binary file","bin"));
+                fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("JSON file","json"));
+                fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("Text file","txt"));
+
+                int retCode = fileChooser.showDialog(null, "Выбрать файл");
+                if (retCode == JFileChooser.APPROVE_OPTION) {
+                    File chosenFile = fileChooser.getSelectedFile();
+                    objectsDirPath = chosenFile.getPath();
+                    if (objectsDirPath != null) {
+                        String extensionConstruction = String.valueOf(fileChooser.getFileFilter());
+                        String extension = extensionConstruction.substring(extensionConstruction.indexOf("=[") + 2, extensionConstruction.length() - 2);
+
+                        switch (extension) {
+                            case ("json"):
+                                for (int i = 0; i < resourcesLists.length; i++) {
+                                    try {
+                                        //JsonSerializer jsonSerializer = new JsonSerializer(resourcesLists[i]);
+                                        //jsonSerializer.serialize(objectsDirPath + "\\" + mainObjectsList.get(i).getName() + ".json");
+                                        SafeJsonSerializer jsonSerializer = new SafeJsonSerializer(resourcesLists[i], availablePlugins[selectedPluginNumber]);
+                                        jsonSerializer.serialize(objectsDirPath + "\\" + mainObjectsList.get(i).getName() + ".json");
+                                    } catch (IOException | InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
+                                        e.printStackTrace();
+                                    }
+                                }
+                                break;
+                            case ("bin"):
+                                for (int i = 0; i < resourcesLists.length; i++) {
+                                    try {
+                                        //BinarySerializer binarySerializer = new BinarySerializer(resourcesLists[i]);
+                                        //binarySerializer.serialize(objectsDirPath + "\\" + mainObjectsList.get(i).getName() + ".bin");
+                                        SafeBinarySerializer binarySerializer = new SafeBinarySerializer(resourcesLists[i], availablePlugins[selectedPluginNumber]);
+                                        binarySerializer.serialize(objectsDirPath + "\\" + mainObjectsList.get(i).getName() + ".bin");
+                                    } catch (IOException | NoSuchMethodException | InvocationTargetException | IllegalAccessException | InstantiationException e) {
+                                        e.printStackTrace();
+                                    }
+                                }
+                                break;
+                            case ("txt"):
+                            default:
+                                for (int i = 0; i < resourcesLists.length; i++) {
+                                    try {
+                                        //TextSerializer textSerializer = new TextSerializer(resourcesLists[i], mainObjectsList.get(i));
+                                        //textSerializer.serialize(objectsDirPath + "\\" + mainObjectsList.get(i).getName() + ".txt");
+                                        SafeTextSerializer textSerializer = new SafeTextSerializer(resourcesLists[i], mainObjectsList.get(i), availablePlugins[selectedPluginNumber]);
+                                        textSerializer.serialize(objectsDirPath + "\\" + mainObjectsList.get(i).getName() + ".txt");
+                                    } catch (IOException e) {
+                                        e.printStackTrace();
+                                    }
+                                }
+                                break;
+                        }
+                    }
+                }
+            }
+            else {
+                JOptionPane.showMessageDialog(guiClass, "Encryption plugin is not selected!");
+            }
+
+            /*
             JFileChooser fileChooser = new JFileChooser("D:\\ObjectStore");
             fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
             fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("Binary file","bin"));
@@ -209,6 +313,8 @@ public class Autopark {
             //BinarySerialization binarySerialization = new BinarySerialization();
             //JsonSerialization jsonSerialization = new JsonSerialization();
             //TextSerializer textSerializer = new TextSerializer();
+
+             */
 
         });
         //////////
@@ -375,6 +481,34 @@ public class Autopark {
 
         guiClass.repaint();
 
+    }
+
+    public static Class<?>[] getClassesArray() throws IOException {
+        ArrayList<Class<?>> list = new ArrayList<Class<?>>(0);
+        for(File f : getPackageContent("Plugins")) {
+            String name = f.getName();
+            if (name.contains(".")) {
+                name = name.substring(0, name.lastIndexOf('.'));
+            }
+            try {
+                Class<?> cl = Class.forName("Plugins." + name);
+                list.add(cl);
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
+        return list.toArray(new Class<?>[]{});
+    }
+
+    private static File[] getPackageContent(String packageName) throws IOException {
+        ArrayList<File> list = new ArrayList<File>(0);
+        Enumeration<URL> urls = Thread.currentThread().getContextClassLoader().getResources(packageName);
+        while (urls.hasMoreElements()) {
+            URL url = urls.nextElement();
+            File dir = new File(url.getFile());
+            Collections.addAll(list, Objects.requireNonNull(dir.listFiles()));
+        }
+        return list.toArray(new File[]{});
     }
 
     private static ArrayList<String> getObjectStringFields(ArrayList<Field> orderedFieldsList, Object object) throws NoSuchFieldException, ClassNotFoundException, IllegalAccessException {
